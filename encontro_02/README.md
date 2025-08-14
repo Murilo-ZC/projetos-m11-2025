@@ -36,8 +36,8 @@ Principais comandos que vamos utilizar hoje:
 
 Para rodar a nossa aplicação no Cluster
 
-- `docker build -t meu-ping:1.0`
+- `docker build -t meu-ping:1.0 .`
 - `kind load docker-image meu-ping:1.0 --name nome-do-cluster`
-- `kubectl create deployment meu-app --imagem=meu-ping:1.0`
+- `kubectl create deployment meu-app --image=meu-ping:1.0`
 - `kubectl expose deployment meu-app --type=NodePort --port=8080`
 
