@@ -30,3 +30,14 @@ Principais comandos que vamos utilizar hoje:
 - `kubectl delete pod nome-do-pod`: Exclui um pod específico do cluster.
 - `kind get clusters`: Lista os clusters criados com Kind.
 - `kind delete cluster --name nome-do-cluster`: Exclui o cluster Kubernetes criado com Kind.
+
+
+---
+
+Para rodar a nossa aplicação no Cluster
+
+- `docker build -t meu-ping:1.0`
+- `kind load docker-image meu-ping:1.0 --name nome-do-cluster`
+- `kubectl create deployment meu-app --imagem=meu-ping:1.0`
+- `kubectl expose deployment meu-app --type=NodePort --port=8080`
+
