@@ -187,5 +187,179 @@ kubectl apply -f 01_deploy_servico.yaml
 kubectl apply -f 02_deploy_servico_nodeport.yaml
 ```
 
-E agora nosso serviço deve estar acessível na porta 30080 do seu computador! Basta acessar `http://localhost:30080` no navegador.
+E agora nosso serviço deve estar acessível na porta 30080 do seu computador! Basta acessar `http://localhost:30080` no navegador. Enfim! Vamos continuar.
+
+## ConfigMap
+
+O ConfigMap é um recurso do Kubernetes que permite armazenar dados de configuração em pares chave-valor. Ele é usado para separar a configuração do aplicativo do código do aplicativo, facilitando a gestão e atualização dessas configurações sem a necessidade de reconstruir ou redeployar os contêineres.
+
+Vamos criar um ConfigMap no arquivo `03_configmap.yaml`:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-cm
+  namespace: aula-k8s
+data:
+  index.html: |
+    <h1>Olá, Kubernetes!</h1>
+    <p>Servido via ConfigMap.</p>
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: aula-k8s
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: web }
+  template:
+    metadata: { labels: { app: web } }
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports: [{ containerPort: 80 }]
+          volumeMounts:
+            - name: html
+              mountPath: /usr/share/nginx/html
+      volumes:
+        - name: html
+          configMap:
+            name: web-cm
+```
+
+Vamos aplicar esse arquivo e verificar se está funcionando! No navegador, ao acessar `http://localhost:30080/index.html`, você deve ver a mensagem "Olá, Kubernetes! Servido via ConfigMap.".
+
+Para compreender melhor, o ConfigMap `web-cm` contém um arquivo `index.html` que é montado no contêiner Nginx. Isso permite que o Nginx sirva esse arquivo diretamente, sem precisar reconstruir a imagem do contêiner.
+
+Agora que já sabemos como criar um ConfigMap, podemos usá-lo para armazenar outras configurações, como variáveis de ambiente ou arquivos de configuração de aplicativos. Isso nos ajuda a manter o código limpo e a separar as preocupações. Vamos criar um ConfigMap para armazenar variáveis de ambiente que podem ser usadas pelo nosso aplicativo.
+
+Vamos criar um ConfigMap chamado `app-config` no arquivo `04_app_config.yaml`:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: aula-k8s   
+data:
+  DATABASE_URL: "mysql://user:password@mysql:3306/dbname"
+  API_KEY: "1234567890abcdef"
+```
+
+Vamos aplicar esse arquivo:
+
+```bash
+kubectl apply -f 04_app_config.yaml
+```
+
+Agora, podemos usar esse ConfigMap em nossos Pods para definir variáveis de ambiente. Vamos atualizar nosso Deployment do Nginx para incluir essas variáveis de ambiente. Vamos criar um novo arquivo `05_deploy_with_configmap.yaml`:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: aula-k8s
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: web }
+  template:
+    metadata: { labels: { app: web } }
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports: [{ containerPort: 80 }]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DATABASE_URL
+            - name: API_KEY
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: API_KEY
+          volumeMounts:
+            - name: html
+              mountPath: /usr/share/nginx/html
+      volumes:
+        - name: html
+          configMap:
+            name: web-cm
+```
+
+Vamos aplicar esse novo Deployment:
+
+```bash
+kubectl apply -f 05_deploy_with_configmap.yaml
+```
+
+Agora, nosso Deployment do Nginx está configurado para usar as variáveis de ambiente definidas no ConfigMap `app-config`. Podemos verificar se as variáveis estão sendo passadas corretamente para o contêiner usando o comando:
+
+```bash
+kubectl exec -it <nome-do-pod> -n aula-k8s -- printenv
+```
+
+Boa! Agora temos um entendimento básico de como usar ConfigMaps para gerenciar configurações no Kubernetes. Isso nos permite manter nossas aplicações mais flexíveis e fáceis de atualizar.
+
+## Limites de recursos
+
+Vamos falar sobre como definir limites de recursos para nossos Pods. Isso é importante para garantir que nossos aplicativos não consumam mais recursos do que o necessário, evitando problemas de desempenho e estabilidade no cluster.
+
+Vamos criar um arquivo YAML chamado `06_resource_limits.yaml` que define um Deployment com limites de CPU e memória:
+
+```yaml
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: defaults
+  namespace: aula-k8s
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: "500m"
+        memory: "256Mi"
+      defaultRequest:
+        cpu: "100m"
+        memory: "64Mi"
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: hard-limits
+  namespace: aula-k8s
+spec:
+  hard:
+    pods: "10"
+    requests.cpu: "2"
+    requests.memory: "1Gi"
+    limits.cpu: "4"
+    limits.memory: "2Gi"
+```
+
+Vamos aplicar esse arquivo:
+
+```bash
+kubectl apply -f 06_resource_limits.yaml
+```
+
+Agora vamos compreender o que fizemos aqui:
+- **LimitRange**: Define limites padrão para os contêineres dentro do namespace `aula-k8s`. Isso significa que, se um Pod não especificar explicitamente seus próprios limites de CPU e memória, ele usará os valores definidos aqui. No exemplo, o limite padrão é de 500 milicores de CPU e 256 MiB de memória, enquanto a solicitação padrão é de 100 milicores de CPU e 64 MiB de memória.
+- **ResourceQuota**: Define limites máximos para o uso de recursos dentro do namespace `aula-k8s`. Isso significa que, dentro desse namespace, não podemos criar mais de 10 Pods, e o total de solicitações de CPU não pode exceder 2 cores, enquanto o total de solicitações de memória não pode exceder 1 GiB. Os limites máximos são de 4 cores de CPU e 2 GiB de memória.
+
+Para verificar se os limites foram aplicados corretamente, podemos usar o comando:
+
+```bash
+kubectl describe limitrange defaults -n aula-k8s
+kubectl describe resourcequota hard-limits -n aula-k8s
+```
+
 
