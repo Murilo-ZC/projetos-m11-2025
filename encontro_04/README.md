@@ -16,7 +16,7 @@ O estudante deve construir:
 
 Durante o encontro, os estudantes serão auxiliados com o desenvolvimento da solução. Eles podem tirar dúvidas sobre como configurar e construir o cluster, como aplicar o HPA e como realizar testes de carga.
 
-Com está atividade, espera-se que os estudantes possam compreender como utilizar os conceitos de escalabilidade desenvolvimento um projeto aplicado. Além disso, consigam documentar o processo de configuração e execução do cluster, bem como a análise das métricas obtidas durante os testes de carga.
+Com esta atividade, espera-se que os estudantes possam compreender como utilizar os conceitos de escalabilidade desenvolvimento um projeto aplicado. Além disso, consigam documentar o processo de configuração e execução do cluster, bem como a análise das métricas obtidas durante os testes de carga.
 
 ## Barema de Avaliação
 
